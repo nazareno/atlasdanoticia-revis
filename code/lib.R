@@ -26,12 +26,21 @@ import_data <- function(){
     db <- dbConnect(dbDriver("SQLite"), 
                     dbname = here::here("data/atlas_v2.db"))
     
-    municipios = tbl(db, 'atlas1e2') %>% 
+    municipios_db = tbl(db, 'atlas1e2') %>% 
         left_join(tbl(db, 'ibge_pop'), by = c("cidade", "uf", "regiao")) %>% 
         count(cidade, uf, regiao, codmun, segmento_principal, pop_dou_2017) %>% 
-        collect() %>% 
-        spread(key = segmento_principal, value = n, fill = 0)
+        collect()
     
+    predominancia = municipios_db %>% 
+        group_by(codmun) %>% 
+        summarise(tipos_existentes = if_else(length(unique(segmento_principal)) == 1, first(segmento_principal), "Vários"))
+    
+    municipios = municipios_db %>% 
+        spread(key = segmento_principal, value = n, fill = 0) %>% 
+        left_join(predominancia, by = "codmun")
+
+    municipios %>% 
+        write_csv(here::here("data/veiculos_por_municipio.csv"))
 }
 
 read_projectdata <- function(){
