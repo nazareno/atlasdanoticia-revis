@@ -26,14 +26,21 @@ import_data <- function(){
     db <- dbConnect(dbDriver("SQLite"), 
                     dbname = here::here("data/atlas_v2.db"))
     
-    municipios_db = tbl(db, 'atlas1e2') %>% 
-        left_join(tbl(db, 'ibge_pop'), by = c("cidade", "uf", "regiao")) %>% 
-        count(cidade, uf, regiao, codmun, segmento_principal, pop_dou_2017) %>% 
-        collect()
+    ibge = tbl(db, 'ibge_pop') %>% collect() 
+    atlas1e2 = tbl(db, 'atlas1e2') %>% collect()
+    
+    municipios_db = ibge %>% 
+        full_join(atlas1e2, by = c("cidade", "uf", "regiao")) %>% 
+        select(-fonte, -estado, -pais, -regiao_metropolitana) %>% 
+        count(cidade, uf, regiao, codmun, segmento_principal, pop_dou_2017) 
     
     predominancia = municipios_db %>% 
         group_by(codmun) %>% 
-        summarise(tipos_existentes = if_else(length(unique(segmento_principal)) == 1, first(segmento_principal), "Vários"))
+        summarise(tipos_existentes = case_when(
+            length(unique(na.omit(segmento_principal))) == 0 ~ "Nenhum",
+            length(unique(na.omit(segmento_principal))) == 1 ~ first(segmento_principal), 
+            TRUE ~ "Vários")
+        )
     
     municipios = municipios_db %>% 
         spread(key = segmento_principal, value = n, fill = 0) %>% 
