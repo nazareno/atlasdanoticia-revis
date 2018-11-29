@@ -44,7 +44,11 @@ import_data <- function(){
     
     municipios = municipios_db %>% 
         spread(key = segmento_principal, value = n, fill = 0) %>% 
-        left_join(predominancia, by = "codmun")
+        left_join(predominancia, by = "codmun") %>% 
+        select(-11) %>%
+        mutate(total_fontes = Jornal + Online + Revista + `Rádio` + `Televisão`, 
+               fontes_100k_hab = as.double(total_fontes) / as.double(pop_dou_2017) * 100000.0)
+        
 
     municipios %>% 
         write_csv(here::here("data/veiculos_por_municipio.csv"))
